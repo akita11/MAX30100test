@@ -57,9 +57,8 @@ void setup()
 }
 
 uint8_t mode = 0;
-#define Nmode 4
-uint32_t sum_red = 0, sum_ir = 0;
-uint8_t divider = 4;
+#define Nmode 3
+uint8_t divider = 1;
 
 void loop()
 {
@@ -68,24 +67,17 @@ void loop()
     mode = (mode + 1) % Nmode;
     switch(mode){
       case 0:
-        divider = 4; break;
+        divider = 1; break;
       case 1:
-        divider = 8; break;
+        divider = 2; break;
       case 2:
-        divider = 16; break;
-      case 3:
-        divider = 32; break;
+        divider = 4; break;
     }
   }
   uint16_t ir, red;
   sensor.update();
   while (sensor.getRawValues(&ir, &red)) {
-    sum_red -= val_red[px]; sum_ir -= val_ir[px];
     val_red[px] = red; val_ir[px] = ir;
-    sum_red += val_red[px]; sum_ir += val_ir[px];
-    uint8_t avg_red = sum_red << Nbit;
-    uint8_t avg_ir = sum_ir << Nbit;
-/*
     uint16_t min_red = 65535, min_ir = 65535, max_red = 0, max_ir = 0;
     for (uint8_t x = 0; x < X; x++){
       if (val_red[x] > max_red) max_red = val_red[x];
@@ -93,43 +85,28 @@ void loop()
       if (val_ir[x] > max_ir) max_ir = val_ir[x];
       if (val_ir[x] < min_ir) min_ir = val_ir[x];
     }
-//    printf("%d %d / %d\n", max_red, min_red, max_red - min_red);
-    float mag_red, mag_ir;
+//    printf(">red:%d\n", val_red[px]);
+//    printf(">max:%d\n", max_red);
+//    printf(">min:%d\n", min_red);
+    uint16_t mag_red, mag_ir;
     if (max_red == min_red) mag_red = 1;
-    else mag_red = (float)(max_red - min_red) / (float)Y;
+    else mag_red = (max_red - min_red) / Y;
     if (max_ir == min_ir) mag_ir = 1;
-    else mag_ir = (float)(max_ir - min_ir) / (float)Y;
-//    printf("%d : %d - %d / %d / %f / %d\n", px, max_red, min_red, red, mag_red, (uint8_t)((red - min_red) / mag_red));
-//    printf("max_red: %d, min_red: %d, mag_red: %f\n", max_red, min_red, mag_red);
-*/
+    else mag_ir = (max_ir - min_ir) / Y;
     uint8_t dx = px;
     int y_red, y_ir;
     for (uint8_t x = 0; x < X; x++){
-      y_red = (val_red[dx] - avg_red) / divider + Y / 2;
+      y_red = (val_red[dx] - min_red) / mag_red / divider;
       if (y_red > Y - 1) y_red = Y - 1;
       if (y_red < 0) y_red = 0;
+      y_ir = (val_ir[dx] - min_ir) / mag_ir / divider;
+      if (y_ir > Y - 1) y_ir = Y - 1;
+      if (y_ir < 0) y_ir = 0;
       M5.Lcd.drawFastHLine(0, x, Y, BLACK);
       M5.Lcd.drawPixel(Y - y_red, x, RED);
+      M5.Lcd.drawPixel(Y - y_ir, x, GREEN);
       dx = (dx + 1) % X;
     }
-    M5.Lcd.setCursor(0, 0);
-    M5.Lcd.printf("div:%d", divider);
-/*
-//    M5.Lcd.clear();
-    for (uint8_t x = 0; x < X; x++){
-//      y_red = (uint8_t)((val_red[dx] - min_red) / mag_red);
-//      y_ir = (uint8_t)((val_ir[dx] - min_ir) / mag_ir);
-      y_red = (val_red[dx] - min_red) / 4;
-//      y_ir = (uint8_t)((val_ir[dx] - min_ir) / mag_ir);
-      if (y_red > Y) y_red = Y;
-//      if (y_ir > Y) y_ir = Y;
-//      printf("%d %d %d\n", x, y_red, y_ir);
-      M5.Lcd.drawFastHLine(0, x, Y, BLACK);
-      M5.Lcd.drawPixel(Y - y_red, x, RED);
-//      M5.Lcd.drawPixel(Y - y_ir, x, GREEN);
-      dx = (dx + 1) % X;
-    }
-*/
     px = (px + 1) % X;
   }
 }
